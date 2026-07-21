@@ -9,8 +9,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-TOKEN = "8870078495:AAESL6GUbWfuR_OwUD6Pi7cdlgNBc3NiF2Y"
-API_KEY = "MURAD_12B9CA6C873901539718ACB1"
+TOKEN = os.getenv("BOT_TOKEN")
+API_KEY = os.getenv("SMS_API_KEY")
 
 UPDATE_CHANNEL = "@META_FIRE_UPDATE"
 OTP_CHANNEL = "@META_FIRE_OTP"
