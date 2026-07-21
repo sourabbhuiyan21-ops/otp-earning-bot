@@ -1,5 +1,6 @@
 import logging
 import re
+import os
 import httpx
 import asyncio
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, KeyboardButton
@@ -9,8 +10,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# ================== CREDENTIALS ==================
 TOKEN = os.getenv("BOT_TOKEN")
 API_KEY = os.getenv("SMS_API_KEY")
+
+if not TOKEN or not API_KEY:
+    raise ValueError("❌ .env ফাইলে BOT_TOKEN এবং SMS_API_KEY সেট করুন!")
 
 UPDATE_CHANNEL = "@META_FIRE_UPDATE"
 OTP_CHANNEL = "@META_FIRE_OTP"
@@ -25,12 +30,11 @@ main_keyboard = ReplyKeyboardMarkup([
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# ================== শুধুমাত্র আসল দেশ ==================
+# ================== আসল দেশ ==================
 COUNTRY_MAP = {
     "232": {"name": "Sierra Leone", "flag": "🇸🇱"},
     "224": {"name": "Guinea", "flag": "🇬🇳"},
     "225": {"name": "Ivory Coast", "flag": "🇨🇮"},
-    # প্রয়োজন হলে আরেকটা যোগ করতে পারবেন
 }
 
 async def call_website_api_async(endpoint, method="POST", payload=None):
@@ -74,9 +78,10 @@ async def start(update: Update, context):
         await update.message.reply_text(f"🌟 **SUPER FIRE OTP BOT**\n\nস্বাগতম {user_name}!\nচ্যানেলে জয়েন করে ভেরিফাই করুন।", 
                                       reply_markup=InlineKeyboardMarkup(kb), parse_mode=ParseMode.MARKDOWN)
     else:
-        await update.message.reply_text(f"🎉 স্বাগতম {user_name}!\n🌟 SUPER FIRE OTP", reply_markup=main_keyboard, parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text(f"🎉 স্বাগতম {user_name}!\n🌟 SUPER FIRE OTP - সকল সুবিধা উন্মুক্ত", 
+                                      reply_markup=main_keyboard, parse_mode=ParseMode.MARKDOWN)
 
-# ================== MAIN LOGIC ==================
+# ================== CALLBACK ==================
 async def handle_callback(update, context):
     query = update.callback_query
     await query.answer()
@@ -84,9 +89,9 @@ async def handle_callback(update, context):
     if query.data == "verify":
         if await is_user_subscribed(context, query.from_user.id):
             await query.message.delete()
-            await context.bot.send_message(chat_id=query.message.chat_id, text="✅ ভেরিফাই সফল!", reply_markup=main_keyboard)
+            await context.bot.send_message(chat_id=query.message.chat_id, text="✅ ভেরিফাই সফল হয়েছে!", reply_markup=main_keyboard)
         else:
-            await query.answer("❗ চ্যানেলে জয়েন করুন!", show_alert=True)
+            await query.answer("❗ উভয় চ্যানেলে জয়েন করুন!", show_alert=True)
 
     elif query.data.startswith("service_"):
         await query.message.delete()
@@ -97,7 +102,7 @@ async def handle_callback(update, context):
         if query.message.chat_id in active_otp_tasks:
             active_otp_tasks[query.message.chat_id].cancel()
         
-        status = await query.message.edit_text("⚡ নাম্বার খুঁজছি...")
+        status = await query.message.edit_text("⚡ নাম্বার অ্যালোকেট করা হচ্ছে...")
         res = await call_website_api_async("getnum", "POST", {"range": parts[2]})
         
         if res and res.get("meta", {}).get("status") == "ok":
@@ -113,7 +118,7 @@ async def handle_callback(update, context):
             )
             active_otp_tasks[query.message.chat_id] = asyncio.create_task(check_otp(context, query.message.chat_id, num))
         else:
-            await status.edit_text("❌ Server Busy!")
+            await status.edit_text("❌ Server Busy! আবার চেষ্টা করুন।")
 
     elif query.data == "back_to_services":
         await query.message.delete()
@@ -176,15 +181,17 @@ async def text_handler(update, context):
     if "GET NUMBER" in text:
         await show_services(update.message)
     elif "2FA CODE" in text:
-        await update.message.reply_text("🔐 2FA CODE\n\nনাম্বার পাঠান:")
+        await update.message.reply_text("🔐 2FA CODE\n\nযে নাম্বারের 2FA চান সেটি পাঠান:")
     elif "LIVE OTP" in text:
-        await update.message.reply_text("📡 Live OTP", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Open Channel", url=f"https://t.me/{OTP_CHANNEL.replace('@', '')}")]]))
+        await update.message.reply_text("📡 Live OTP Channel", 
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📢 Open Channel", url=f"https://t.me/{OTP_CHANNEL.replace('@', '')}")]]))
 
+# ================== RUN BOT ==================
 app = Application.builder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CallbackQueryHandler(handle_callback))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, text_handler))
 
 if __name__ == "__main__":
-    logging.info("🚀 SUPER FIRE OTP Bot Started!")
+    logging.info("🚀 SUPER FIRE OTP Bot Started Successfully!")
     app.run_polling()
