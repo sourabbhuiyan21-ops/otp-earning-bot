@@ -25,10 +25,9 @@ OTP_CHANNEL = "@META_FIRE_OTP"
 active_otp_tasks = {}
 BOT_USERNAME = "SUPER_FIRE_OTP_BOT"
 
-# ====================== PROFESSIONAL KEYBOARDS ======================
 main_keyboard = ReplyKeyboardMarkup([
     [KeyboardButton("🔥 GET NUMBER 🔥")],
-    [KeyboardButton("📡 LIVE OTP"), KeyboardButton("❓ Help")]
+    [KeyboardButton("🔐 2FA CODE"), KeyboardButton("📡 LIVE OTP")]
 ], resize_keyboard=True, is_persistent=True)
 
 async def start(update: Update, context):
@@ -37,33 +36,25 @@ async def start(update: Update, context):
 
     if not await is_user_subscribed(context, user_id):
         kb = [
-            [InlineKeyboardButton("📢 Update Channel", url=f"https://t.me/{UPDATE_CHANNEL.replace('@', '')}")],
-            [InlineKeyboardButton("📢 OTP Channel", url=f"https://t.me/{OTP_CHANNEL.replace('@', '')}")],
-            [InlineKeyboardButton("✅ Verify Subscription", callback_data="verify")]
+            [InlineKeyboardButton("📢 Join Update Channel", url=f"https://t.me/{UPDATE_CHANNEL.replace('@', '')}")],
+            [InlineKeyboardButton("📢 Join OTP Channel", url=f"https://t.me/{OTP_CHANNEL.replace('@', '')}")],
+            [InlineKeyboardButton("✅ ভেরিফাই", callback_data="verify")]
         ]
         welcome_text = f"""
-🌟 **WELCOME TO SUPER FIRE OTP** 🌟
+🌟 **SUPER FIRE OTP BOT** 🌟
 
-👋 Hello **{user_name}**!
+👋 স্বাগতম **{user_name}**!
 
-এই বটটি দিয়ে দ্রুত এবং নির্ভরযোগ্য ভাবে OTP পেতে পারবেন।
-
-**ব্যবহার করার আগে:**
-✅ Update Channel-এ জয়েন করুন
-✅ OTP Channel-এ জয়েন করুন
-✅ Verify বাটনে ক্লিক করুন
+বটটি ব্যবহার করতে প্রথমে নিচের দুইটি চ্যানেলে জয়েন করুন এবং **ভেরিফাই** বাটনে ক্লিক করুন।
         """
         await update.message.reply_text(welcome_text.strip(), reply_markup=InlineKeyboardMarkup(kb), parse_mode=ParseMode.MARKDOWN)
     else:
-        welcome_text = f"""
-🎉 **স্বাগতম {user_name}!** 🎉
+        await update.message.reply_text(f"""
+🎉 **স্বাগতম {user_name}!** 
 
-🌟 **SUPER FIRE OTP** - আপনার বিশ্বস্ত OTP সার্ভিস
-
-🔥 **এখন আপনি সম্পূর্ণ প্রস্তুত!**
-নিচ থেকে আপনার পছন্দের সার্ভিস নির্বাচন করুন।
-        """
-        await update.message.reply_text(welcome_text.strip(), reply_markup=main_keyboard, parse_mode=ParseMode.MARKDOWN)
+🌟 **SUPER FIRE OTP** - প্রিমিয়াম সার্ভিস
+🔥 নিচ থেকে অপশন নির্বাচন করুন
+        """, reply_markup=main_keyboard, parse_mode=ParseMode.MARKDOWN)
 
 async def is_user_subscribed(context, user_id):
     try:
@@ -73,7 +64,7 @@ async def is_user_subscribed(context, user_id):
     except:
         return False
 
-# ================== REST OF THE CODE (সুন্দর করে রাখা হয়েছে) ==================
+# ================== CALLBACK HANDLER ==================
 async def handle_callback(update, context):
     query = update.callback_query
     await query.answer()
@@ -82,51 +73,17 @@ async def handle_callback(update, context):
         if await is_user_subscribed(context, query.from_user.id):
             await query.message.delete()
             await context.bot.send_message(
-                chat_id=query.message.chat_id, 
-                text="✅ **সফলভাবে ভেরিফাইড!**\n\nএখন আপনি পুরোপুরি বট ব্যবহার করতে পারবেন।",
+                chat_id=query.message.chat_id,
+                text="✅ **সফলভাবে ভেরিফাইড হয়েছে!**\n\nএখন আপনি বটের সকল সুবিধা ব্যবহার করতে পারবেন।",
                 reply_markup=main_keyboard,
                 parse_mode=ParseMode.MARKDOWN
             )
         else:
-            await query.answer("❗ আপনি এখনো উভয় চ্যানেলে জয়েন করেননি!", show_alert=True)
+            await query.answer("❗ দয়া করে উভয় চ্যানেলে জয়েন করুন!", show_alert=True)
 
-    # Previous callback functions (range, service etc.) remain same...
-    elif query.data.startswith("range_") or query.data.startswith("chgnum_"):
-        # ... (আগের কোড এখানে রাখুন)
-        pass  # আপনার আগের কোডের এই অংশটুকু এখানে রাখবেন
+    # আপনার আগের range, service ইত্যাদি কোড এখানে রাখুন...
 
-    elif query.data == "back_to_services":
-        await query.message.delete()
-        await show_services(query.message)
-    elif query.data.startswith("service_"):
-        await query.message.delete()
-        await show_ranges(query.message, query.data.split("_")[1])
-
-async def show_services(msg):
-    kb = [
-        [InlineKeyboardButton("🔷 FACEBOOK 🔷", callback_data="service_facebook")],
-        [InlineKeyboardButton("📸 INSTAGRAM 📸", callback_data="service_instagram")]
-    ]
-    text = "🌐 **Select Platform**\n\nকোন প্ল্যাটফর্মের জন্য নাম্বার নিতে চান?"
-    await msg.reply_text(text, reply_markup=InlineKeyboardMarkup(kb), parse_mode=ParseMode.MARKDOWN)
-
-async def show_ranges(msg, service):
-    # আগের কোড অনুযায়ী রাখুন...
-    pass
-
-# Help Command
-async def help_command(update: Update, context):
-    help_text = """
-🆘 **SUPER FIRE OTP - Help Center**
-
-🔥 /start - বট রিস্টার্ট করুন
-📱 GET NUMBER - নতুন নাম্বার নিন
-📡 LIVE OTP - লাইভ ওটিপি চ্যানেল দেখুন
-
-**সাপোর্ট:** @META_FIRE_UPDATE
-    """
-    await update.message.reply_text(help_text, parse_mode=ParseMode.MARKDOWN)
-
+# ================== TEXT HANDLER ==================
 async def text_handler(update, context):
     if not await is_user_subscribed(context, update.effective_user.id):
         await start(update, context)
@@ -135,23 +92,19 @@ async def text_handler(update, context):
     text = update.message.text
     if "GET NUMBER" in text:
         await show_services(update.message)
+    elif "2FA CODE" in text:
+        await update.message.reply_text("🔐 **2FA CODE**\n\nএই সার্ভিসটি বর্তমানে আপডেটের কাজ চলছে।")
     elif "LIVE OTP" in text:
-        await update.message.reply_text(
-            "📡 **Live OTP Channel**", 
-            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📢 Open Live OTP Channel", url=f"https://t.me/{OTP_CHANNEL.replace('@', '')}")]])
-        )
-    elif "Help" in text or "help" in text.lower():
-        await help_command(update, context)
+        await update.message.reply_text("📡 **Live OTP Section**", 
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("📢 Open Live OTP Channel", url=f"https://t.me/{OTP_CHANNEL.replace('@', '')}")]]))
 
-# ====================== MAIN ======================
+# অন্যান্য ফাংশন (show_services, show_ranges, check_otp) আগের কোড থেকে রাখুন
+
 app = Application.builder().token(TOKEN).build()
-
 app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("help", help_command))
 app.add_handler(CallbackQueryHandler(handle_callback))
 app.add_handler(MessageHandler(filters.TEXT, text_handler))
 
 if __name__ == "__main__":
     logging.info("🚀 SUPER FIRE OTP Bot Started Successfully!")
-    print("🤖 Bot is running... Press Ctrl+C to stop.")
     app.run_polling()
