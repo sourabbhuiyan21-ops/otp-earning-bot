@@ -9,7 +9,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# ================== CREDENTIALS ==================
 TOKEN = "8870078495:AAESL6GUbWfuR_OwUD6Pi7cdlgNBc3NiF2Y"
 API_KEY = "MURAD_12B9CA6C873901539718ACB1"
 
@@ -26,7 +25,14 @@ main_keyboard = ReplyKeyboardMarkup([
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# ================== API CALL ==================
+# ================== শুধুমাত্র আসল দেশ ==================
+COUNTRY_MAP = {
+    "232": {"name": "Sierra Leone", "flag": "🇸🇱"},
+    "224": {"name": "Guinea", "flag": "🇬🇳"},
+    "225": {"name": "Ivory Coast", "flag": "🇨🇮"},
+    # প্রয়োজন হলে আরেকটা যোগ করতে পারবেন
+}
+
 async def call_website_api_async(endpoint, method="POST", payload=None):
     try:
         url = f"https://2eee7.com/@Access/@Bot/2eee7/@public/api/{endpoint}"
@@ -49,10 +55,10 @@ async def is_user_subscribed(context, user_id):
     except:
         return False
 
-# শুধুমাত্র রেঞ্জ থেকে প্রিফিক্স দেখাবে (কোনো ভুয়া দেশ নয়)
-def get_range_display(range_str):
+def get_country_details(range_str):
     clean = re.sub(r'\D', '', str(range_str))
-    return f"+{clean[:3]}..."
+    prefix = clean[:3]
+    return COUNTRY_MAP.get(prefix, {"name": f"Server {prefix}", "flag": "🌍"})
 
 # ================== START ==================
 async def start(update: Update, context):
@@ -65,12 +71,12 @@ async def start(update: Update, context):
             [InlineKeyboardButton("📢 Join OTP Channel", url="https://t.me/META_FIRE_OTP")],
             [InlineKeyboardButton("✅ ভেরিফাই", callback_data="verify")]
         ]
-        await update.message.reply_text(f"🌟 **SUPER FIRE OTP**\n\nস্বাগতম {user_name}!\nচ্যানেলে জয়েন করে ভেরিফাই করুন।", 
+        await update.message.reply_text(f"🌟 **SUPER FIRE OTP BOT**\n\nস্বাগতম {user_name}!\nচ্যানেলে জয়েন করে ভেরিফাই করুন।", 
                                       reply_markup=InlineKeyboardMarkup(kb), parse_mode=ParseMode.MARKDOWN)
     else:
         await update.message.reply_text(f"🎉 স্বাগতম {user_name}!\n🌟 SUPER FIRE OTP", reply_markup=main_keyboard, parse_mode=ParseMode.MARKDOWN)
 
-# ================== CALLBACK ==================
+# ================== MAIN LOGIC ==================
 async def handle_callback(update, context):
     query = update.callback_query
     await query.answer()
@@ -91,14 +97,20 @@ async def handle_callback(update, context):
         if query.message.chat_id in active_otp_tasks:
             active_otp_tasks[query.message.chat_id].cancel()
         
-        status = await query.message.edit_text("⚡ নাম্বার অ্যালোকেট করা হচ্ছে...")
+        status = await query.message.edit_text("⚡ নাম্বার খুঁজছি...")
         res = await call_website_api_async("getnum", "POST", {"range": parts[2]})
         
         if res and res.get("meta", {}).get("status") == "ok":
             num = res["data"].get("full_number") or res["data"].get("number")
+            c = get_country_details(num)
             btn = [[InlineKeyboardButton("🔄 Change Number", callback_data=f"chgnum_{parts[1]}_{parts[2]}")]]
-            await status.edit_text(f"🚀 **NUMBER ALLOCATED**\n📱 `+{re.sub(r'\D', '', str(num))}`\n⏳ Waiting for OTP...", 
-                                 reply_markup=InlineKeyboardMarkup(btn), parse_mode=ParseMode.MARKDOWN)
+            await status.edit_text(
+                f"🚀 **NUMBER ALLOCATED**\n\n"
+                f"📍 {c['flag']} {c['name']}\n"
+                f"📱 `+{re.sub(r'\D', '', str(num))}`\n"
+                f"⏳ Waiting for OTP...",
+                reply_markup=InlineKeyboardMarkup(btn), parse_mode=ParseMode.MARKDOWN
+            )
             active_otp_tasks[query.message.chat_id] = asyncio.create_task(check_otp(context, query.message.chat_id, num))
         else:
             await status.edit_text("❌ Server Busy!")
@@ -128,17 +140,18 @@ async def show_ranges(msg, service):
         sid = s.get("sid", "").lower()
         if target in sid or (target == "instagram" and ("ig" in sid or "insta" in sid)):
             for r in s.get("ranges", []):
-                display = get_range_display(r)
-                if display not in seen:
-                    seen.add(display)
-                    kb.append([InlineKeyboardButton(display, callback_data=f"range_{service}_{r}")])
+                c = get_country_details(r)
+                text = f"{c['flag']} {c['name']}"
+                if text not in seen:
+                    seen.add(text)
+                    kb.append([InlineKeyboardButton(text, callback_data=f"range_{service}_{r}")])
 
     if not kb:
         await msg.reply_text(f"❌ {service.upper()} এর জন্য কোনো রেঞ্জ পাওয়া যায়নি।")
         return
 
     kb.append([InlineKeyboardButton("🔙 Back", callback_data="back_to_services")])
-    await msg.reply_text(f"🌍 **{service.upper()} Available Ranges**", reply_markup=InlineKeyboardMarkup(kb), parse_mode=ParseMode.MARKDOWN)
+    await msg.reply_text(f"🌍 **{service.upper()} Available Countries**", reply_markup=InlineKeyboardMarkup(kb), parse_mode=ParseMode.MARKDOWN)
 
 async def check_otp(context, chat_id, number):
     full = re.sub(r'\D', '', str(number))
@@ -165,7 +178,7 @@ async def text_handler(update, context):
     elif "2FA CODE" in text:
         await update.message.reply_text("🔐 2FA CODE\n\nনাম্বার পাঠান:")
     elif "LIVE OTP" in text:
-        await update.message.reply_text("📡 Live OTP Channel", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Open", url=f"https://t.me/{OTP_CHANNEL.replace('@', '')}")]]))
+        await update.message.reply_text("📡 Live OTP", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Open Channel", url=f"https://t.me/{OTP_CHANNEL.replace('@', '')}")]]))
 
 app = Application.builder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
